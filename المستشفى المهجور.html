@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>الغرفة 404 - لعبة رعب (الأساس البرمجي)</title>
+    <style>
+        /* =========================================
+           1. إعدادات التصميم والأجواء المرعبة (CSS)
+           ========================================= */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #050507;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* حاوية اللعبة الرئيسية */
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #0d0e12 0%, #020203 100%);
+        }
+
+        canvas {
+            display: block;
+            background-color: #08090c;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+            touch-action: none;
+        }
+
+        /* تأثير وميض الشاشة المرعب (Flicker Effect) */
+        .crt-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle, transparent 55%, rgba(0, 0, 0, 0.85) 100%);
+            animation: ambientFlicker 6s infinite;
+            z-index: 5;
+        }
+
+        @keyframes ambientFlicker {
+            0%, 94%, 96%, 98%, 100% { opacity: 1; }
+            95%, 97% { opacity: 0.75; }
+        }
+
+        /* واجهة المستخدم العلوية (HUD) */
+        #hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-box {
+            background: rgba(15, 17, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(6px);
+            padding: 10px 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .key-counter {
+            color: #fbbf24;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .room-title {
+            color: #ef4444;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        /* رسائل اللعبة التفاعلية (بديل alert) */
+        #message-banner {
+            position: absolute;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(127, 29, 29, 0.9);
+            border: 1px solid #ef4444;
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+
+        /* شاشة البداية والنهاية */
+        #modal-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(3, 3, 5, 0.92);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            padding: 24px;
+            text-align: center;
+        }
+
+        #modal-screen h1 {
+            font-size: 2.2rem;
+            color: #ef4444;
+            margin-bottom: 12px;
+            text-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+        }
+
+        #modal-screen p {
+            color: #94a3b8;
+            max-width: 420px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            font-size: 15px;
+        }
+
+        .btn-horror {
+            background: linear-gradient(135deg, #991b1b, #7f1d1d);
+            color: white;
+            border: 1px solid #ef4444;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-horror:active {
+            transform: scale(0.95);
+        }
+
+        /* أزرار التحكم للجوال (Touch Controls) */
+        #mobile-controls {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            right: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 52px);
+            grid-template-rows: repeat(3, 52px);
+            gap: 6px;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 14px;
+            color: #e2e8f0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            touch-action: manipulation;
+        }
+
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(239, 68, 68, 0.35);
+            border-color: #ef4444;
+        }
+
+        .flashlight-toggle {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            pointer-events: auto;
+            font-size: 24px;
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+        }
+
+        /* طبقة الصدمة (Jumpscare) واهتزاز الشاشة */
+        #jumpscare-flash {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, #991b1b 0%, #3b0a0a 100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 25;
+            transition: opacity 0.08s;
+        }
+
+        #jumpscare-flash.on {
+            opacity: 0.9;
+        }
+
+        #game-wrapper.shake {
+            animation: shake 0.12s linear infinite;
+        }
+
+        @keyframes shake {
+            0%   { transform: translate(0, 0); }
+            25%  { transform: translate(-7px, 3px); }
+            50%  { transform: translate(6px, -4px); }
+            75%  { transform: translate(-3px, -2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .battery-box { color: #86efac; display: flex; gap: 8px; align-items: center; }
+        .battery-box.low { color: #f87171; animation: batteryPulse 0.8s infinite alternate; }
+        @keyframes batteryPulse { to { opacity: .45; } }
+        .right-controls { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
+        .sprint-toggle { width: 58px; height: 58px; border-radius: 50%; font-size: 22px; }
+        .sprint-toggle.active { background: rgba(34,197,94,.3); border-color: #22c55e; }
+        #hud { gap: 8px; }
+        .hud-box { padding: 9px 12px; }
+        @media (max-width: 480px) {
+            #hud { top: 8px; left: 8px; right: 8px; }
+            .hud-box { font-size: 11px; padding: 8px 9px; }
+            .dpad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px); gap: 4px; }
+            #mobile-controls { bottom: 12px; left: 12px; right: 12px; }
+        }
+
+        /* زر ثانوي */
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: none;
+            margin-top: 12px;
+        }
+
+        /* زر الإيقاف المؤقت */
+        .pause-toggle {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            font-size: 16px;
+        }
+
+        /* شاشة الإيقاف المؤقت */
+        #pause-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(3, 3, 5, 0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            z-index: 28;
+        }
+
+        #pause-screen h1 {
+            font-size: 2rem;
+            color: #fca5a5;
+            text-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+        }
+
+        /* شاشة الألعاب الثانية */
+        #games-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(3, 3, 5, 0.96);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+            overflow-y: auto;
+            z-index: 32;
+        }
+
+        #games-screen h1 {
+            font-size: 1.8rem;
+            color: #e2e8f0;
+            margin: 16px 0;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 14px;
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .game-card {
+            background: rgba(15, 17, 23, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 16px;
+            opacity: 0.55;
+        }
+
+        .game-card.playable {
+            opacity: 1;
+            border-color: #ef4444;
+            cursor: pointer;
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.25);
+        }
+
+        .game-card-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+
+        .game-card-desc {
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .game-card-tag {
+            font-size: 12px;
+            color: #fbbf24;
+        }
+
+        .game-card.playable .game-card-tag {
+            color: #f87171;
+        }
+
+/* إخفاء أزرار اللمس على الشاشات الكبيرة التي لا تدعم اللمس */
+        @media (min-width: 900px) and (pointer: fine) {
+            #mobile-controls {
+                opacity: 0.45;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <!-- واجهة المعلومات العلوية -->
+    <div id="hud">
+        <div class="hud-box room-title">المستشفى المهجور - غرفة 404</div>
+        <div class="hud-box key-counter">
+            <span>🔑 المفاتيح:</span>
+            <span id="keys-ui">0 / 3</span>
+        </div>
+        <div class="hud-box battery-box">
+            <span>🔋</span>
+            <span id="battery-ui">100%</span>
+        </div>
+    </div>
+
+    <!-- شريط الإشعارات داخل اللعبة -->
+    <div id="message-banner">ابحث عن المفاتيح الثلاثة لفتح باب الهروب...</div>
+
+    <!-- طبقة المؤثرات البصرية للرعب -->
+    <div class="crt-overlay"></div>
+
+    <!-- وميض الصدمة عند القبض عليك -->
+    <div id="jumpscare-flash"></div>
+
+    <!-- لوحة الرسم الرئيسية للعبة -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- أزرار التحكم باللمس للجوال -->
+    <div id="mobile-controls">
+        <div class="dpad">
+            <div></div>
+            <button class="touch-btn" data-dir="up">▲</button>
+            <div></div>
+            <button class="touch-btn" data-dir="left">◀</button>
+            <div></div>
+            <button class="touch-btn" data-dir="right">▶</button>
+            <div></div>
+            <button class="touch-btn" data-dir="down">▼</button>
+            <div></div>
+        </div>
+        <div class="right-controls">
+            <button class="touch-btn pause-toggle" id="btn-pause" title="إيقاف مؤقت">⏸</button>
+            <button class="touch-btn flashlight-toggle" id="btn-flashlight" title="تشغيل/إطفاء الكشاف">🔦</button>
+            <button class="touch-btn sprint-toggle" id="btn-sprint" title="اركض بالضغط المستمر">🏃</button>
+        </div>
+    </div>
+
+    <!-- شاشة البداية / الفوز -->
+    <div id="modal-screen">
+        <h1 id="modal-title">الغرفة 404</h1>
+        <p id="modal-desc">
+            استيقظت في ظلام دامس داخل جناح مهجور. بطارية كشافك ضعيفة، وهناك شيء يتحرك في الظلال.<br><br>
+            <strong>المهمة:</strong> اجمع <b>3 مفاتيح</b> مضيئة لفتح باب الهروب.<br>
+            (التحكم: الأسهم أو WASD، أو أزرار اللمس. F للكشاف، Shift للركض، P للإيقاف المؤقت)
+        </p>
+        <button class="btn-horror" id="start-btn">ابدأ الهروب</button>
+        <button class="btn-horror btn-secondary" id="games-btn">🎮 ألعاب ثانية</button>
+    </div>
+
+    <!-- شاشة الألعاب الثانية -->
+    <div id="games-screen">
+        <h1>ألعاب ثانية</h1>
+        <div class="games-grid">
+            <div class="game-card playable">
+                <div class="game-card-title">الغرفة 404</div>
+                <div class="game-card-desc">رعب في مستشفى مهجور: مفاتيح، كشاف، ووحش يطاردك.</div>
+                <div class="game-card-tag">تلعبها الحين</div>
+            </div>
+            <div class="game-card">
+                <div class="game-card-title">سباق الليل</div>
+                <div class="game-card-desc">سيارة من الأعلى، تتفادى الحواجز وتسبق الوقت.</div>
+                <div class="game-card-tag">قريباً</div>
+            </div>
+            <div class="game-card">
+                <div class="game-card-title">ذاكرة الألوان</div>
+                <div class="game-card-desc">ألعاب ذاكرة بألوان، تزيد صعوبتها كل جولة.</div>
+                <div class="game-card-tag">قريباً</div>
+            </div>
+            <div class="game-card">
+                <div class="game-card-title">لغز الكلمات</div>
+                <div class="game-card-desc">كلمات مخفية في شبكة حروف، والمراحل تزيد طولاً.</div>
+                <div class="game-card-tag">قريباً</div>
+            </div>
+            <div class="game-card">
+                <div class="game-card-title">ثعبان الظلام</div>
+                <div class="game-card-desc">ثعبان يكبر وسط الظلام، وكل تفاحة تطفئ ضوءاً.</div>
+                <div class="game-card-tag">قريباً</div>
+            </div>
+        </div>
+        <button class="btn-horror btn-secondary" id="games-back-btn">رجوع</button>
+    </div>
+
+    <!-- شاشة الإيقاف المؤقت -->
+    <div id="pause-screen">
+        <h1>متوقفة</h1>
+        <button class="btn-horror" id="resume-btn">استمر</button>
+        <button class="btn-horror btn-secondary" id="restart-btn">ابدأ من جديد</button>
+    </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * محرك لعبة الرعب الأساسي - الغرفة 404 (تم بناؤه بواسطة Gemini)
+ * ============================================================================
+ * ملاحظة لبقية فريق الذكاء الاصطناعي (Claude, ChatGPT, Qwen):
+ * الكود مقسم بشكل وحدات (Modular) ليسهل التعديل والإضافة عليه:
+ * 1. GAME_CONFIG: إعدادات السرعة، الكشاف، والألوان.
+ * 2. gameState: حالة اللعبة، موقع اللاعب، المفاتيح، والجدران.
+ * 3. MONSTER_HOOK: مكان مخصص لإضافة ذكاء اصطناعي للوحش ونظام Jumpscare.
+ * 4. AUDIO_HOOK: مكان مخصص لإضافة أصوات الرعب باستخدام Web Audio API أو Tone.js.
+ * ============================================================================
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// 1. إعدادات اللعبة القابلة للتعديل
+const GAME_CONFIG = {
+    worldWidth: 1200,
+    worldHeight: 900,
+    playerRadius: 14,
+    playerSpeed: 3.4,
+    flashlightRange: 270,
+    flashlightAngle: Math.PI / 3.2, // زاوية مخروط الضوء
+    ambientVisionRadius: 48,        // رؤية خفيفة جداً حول اللاعب في الظلام
+    totalKeys: 3,
+    maxBattery: 100,
+    batteryDrain: 2.2,
+    sprintMultiplier: 1.65
+};
+
+// 2. حالة اللعبة (Game State)
+const gameState = {
+    isRunning: false,
+    keysCollected: 0,
+    doorUnlocked: false,
+    flickerIntensity: 1,
+    battery: 100,
+    batteriesCollected: 0,
+    monsterPath: [],
+    lastPathTime: 0,
+    monster: null, // يتفعّل بعد أول مفتاح
+    paused: false,
+    player: {
+        x: 150,
+        y: 150,
+        angle: 0, // اتجاه نظر اللاعب والكشاف
+        vx: 0,
+        vy: 0,
+        flashlightOn: true
+    },
+    // جدران وعوائق الغرفة (أسِرّة طبية، جدران متهدمة، مكاتب)
+    walls: [
+        // الحدود الخارجية للغرفة
+        { x: 0, y: 0, w: 1200, h: 30 },
+        { x: 0, y: 870, w: 1200, h: 30 },
+        { x: 0, y: 0, w: 30, h: 900 },
+        { x: 1170, y: 0, w: 30, h: 900 },
+
+        // جدران داخلية لتكوين ممرات مرعبة
+        { x: 280, y: 30, w: 30, h: 320 },
+        { x: 280, y: 500, w: 30, h: 370 },
+        { x: 580, y: 220, w: 30, h: 460 },
+        { x: 580, y: 220, w: 320, h: 30 },
+        { x: 870, y: 420, w: 30, h: 450 },
+
+        // أثاث مستشفى مهجور (عوائق)
+        { x: 100, y: 400, w: 90, h: 45 },
+        { x: 410, y: 120, w: 80, h: 45 },
+        { x: 410, y: 720, w: 95, h: 45 },
+        { x: 700, y: 550, w: 80, h: 50 },
+        { x: 1000, y: 150, w: 90, h: 50 }
+    ],
+    // المفاتيح الثلاثة الموزعة في الظلام
+    keys: [],
+    // باب الهروب
+    exitDoor: {
+        x: 1135,
+        y: 740,
+        w: 35,
+        h: 90
+    }
+};
+
+// مدخلات التحكم (كيبورد + لمس)
+const keysPressed = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    sprint: false
+};
+
+/**
+ * تهيئة وإعادة ضبط اللعبة
+ */
+function initGame() {
+    gameState.keysCollected = 0;
+    gameState.doorUnlocked = false;
+    gameState.battery = GAME_CONFIG.maxBattery;
+    gameState.batteriesCollected = 0;
+    gameState.monsterPath = [];
+    gameState.lastPathTime = 0;
+    gameState.player.x = 130;
+    gameState.player.y = 130;
+    gameState.player.angle = 0;
+    gameState.player.flashlightOn = true;
+    keysPressed.sprint = false;
+    sprintButton?.classList.remove('active');
+    gameState.monster = null;
+    gameState.paused = false;
+    const pauseScreen = document.getElementById('pause-screen');
+    if (pauseScreen) pauseScreen.style.display = 'none';
+
+    // توزيع المفاتيح في أماكن متفرقة وصعبة الوصول
+    gameState.keys = [
+        { id: 1, x: 130, y: 780, collected: false, pulse: 0 },
+        { id: 2, x: 740, y: 340, collected: false, pulse: 1.5 },
+        { id: 3, x: 1050, y: 280, collected: false, pulse: 3 }
+    ];
+    gameState.batteries = [
+        { x: 460, y: 610, collected: false, pulse: 0 },
+        { x: 990, y: 650, collected: false, pulse: 2 }
+    ];
+
+    updateHUD();
+    showMessage("ابحث عن 3 مفاتيح في الظلام لفتح باب الهروب...");
+}
+
+/**
+ * إظهار رسالة مؤقتة للاعب
+ */
+let messageTimeout;
+function showMessage(text) {
+    const banner = document.getElementById('message-banner');
+    banner.textContent = text;
+    banner.style.opacity = '1';
+    clearTimeout(messageTimeout);
+    messageTimeout = setTimeout(() => {
+        banner.style.opacity = '0';
+    }, 3500);
+}
+
+/**
+ * تحديث واجهة العداد
+ */
+function updateHUD() {
+    document.getElementById('keys-ui').textContent = `${gameState.keysCollected} / ${GAME_CONFIG.totalKeys}`;
+    const batteryUI = document.getElementById('battery-ui');
+    batteryUI.textContent = `${Math.ceil(gameState.battery)}%`;
+    batteryUI.parentElement.classList.toggle('low', gameState.battery <= 20);
+}
+
+/**
+ * ضبط حجم الكانفاس ليتجاوب مع جميع الشاشات
+ */
+function resizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+/**
+ * ============================================================================
+ * التحكم بالكيبورد والماوس واللمس
+ * ============================================================================
+ */
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (key === 'w' || key === 'arrowup') keysPressed.up = true;
+    if (key === 's' || key === 'arrowdown') keysPressed.down = true;
+    if (key === 'a' || key === 'arrowleft') keysPressed.left = true;
+    if (key === 'd' || key === 'arrowright') keysPressed.right = true;
+    if (key === 'f' && !e.repeat) toggleFlashlight();
+    if (key === 'shift') keysPressed.sprint = true;
+    if ((key === 'p' || key === 'escape') && !e.repeat) togglePause();
+});
+
+window.addEventListener('keyup', (e) => {
+    const key = e.key.toLowerCase();
+    if (key === 'w' || key === 'arrowup') keysPressed.up = false;
+    if (key === 's' || key === 'arrowdown') keysPressed.down = false;
+    if (key === 'a' || key === 'arrowleft') keysPressed.left = false;
+    if (key === 'd' || key === 'arrowright') keysPressed.right = false;
+    if (key === 'shift') keysPressed.sprint = false;
+});
+
+// عند خروج التركيز من الصفحة نوقف كل الحركات حتى ما تستمر الشخصية تمشي
+window.addEventListener('blur', () => {
+    for (const k in keysPressed) keysPressed[k] = false;
+    document.getElementById('btn-sprint').classList.remove('active');
+});
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (gameState.isRunning && !gameState.paused) togglePause();
+        for (const k in keysPressed) keysPressed[k] = false;
+        document.getElementById('btn-sprint').classList.remove('active');
+    }
+});
+
+// توجيه الكشاف نحو مؤشر الماوس على الكمبيوتر
+window.addEventListener('mousemove', (e) => {
+    if (!gameState.isRunning) return;
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    gameState.player.angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+});
+
+// توجيه الكشاف بالسحب على مساحة اللعب في الجوال
+canvas.addEventListener('pointerdown', (e) => {
+    if (!gameState.isRunning) return;
+    canvas.setPointerCapture(e.pointerId);
+    aimFlashlight(e);
+});
+canvas.addEventListener('pointermove', (e) => {
+    if (!gameState.isRunning || e.pointerType === 'mouse') return;
+    if (e.buttons) aimFlashlight(e);
+});
+function aimFlashlight(e) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    gameState.player.angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+}
+
+// إعداد أزرار اللمس للجوال
+document.querySelectorAll('.touch-btn[data-dir]').forEach(btn => {
+    const dir = btn.getAttribute('data-dir');
+    
+    const startHandler = (e) => {
+        e.preventDefault();
+        keysPressed[dir] = true;
+        btn.classList.add('active');
+    };
+    
+    const endHandler = (e) => {
+        e.preventDefault();
+        keysPressed[dir] = false;
+        btn.classList.remove('active');
+    };
+
+    btn.addEventListener('pointerdown', startHandler);
+    btn.addEventListener('pointerup', endHandler);
+    btn.addEventListener('pointercancel', endHandler);
+    btn.addEventListener('lostpointercapture', endHandler);
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+function toggleFlashlight() {
+    gameState.player.flashlightOn = !gameState.player.flashlightOn;
+}
+document.getElementById('btn-flashlight').addEventListener('click', toggleFlashlight);
+
+function togglePause() {
+    if (!gameState.isRunning) return;
+    gameState.paused = !gameState.paused;
+    document.getElementById('pause-screen').style.display = gameState.paused ? 'flex' : 'none';
+    if (gameState.paused) {
+        for (const k in keysPressed) keysPressed[k] = false;
+        document.getElementById('btn-sprint').classList.remove('active');
+    }
+}
+document.getElementById('btn-pause').addEventListener('click', togglePause);
+document.getElementById('resume-btn').addEventListener('click', togglePause);
+document.getElementById('restart-btn').addEventListener('click', () => {
+    initGame();
+    gameState.isRunning = true;
+});
+const sprintButton = document.getElementById('btn-sprint');
+sprintButton.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    keysPressed.sprint = true;
+    sprintButton.classList.add('active');
+});
+const stopSprint = () => {
+    keysPressed.sprint = false;
+    sprintButton.classList.remove('active');
+};
+sprintButton.addEventListener('pointerup', stopSprint);
+sprintButton.addEventListener('pointercancel', stopSprint);
+sprintButton.addEventListener('lostpointercapture', stopSprint);
+
+/**
+ * ============================================================================
+ * الفيزياء والتصادم (Collision Detection)
+ * ============================================================================
+ */
+function checkWallCollision(nx, ny, radius) {
+    for (const wall of gameState.walls) {
+        const closestX = Math.max(wall.x, Math.min(nx, wall.x + wall.w));
+        const closestY = Math.max(wall.y, Math.min(ny, wall.y + wall.h));
+        const dx = nx - closestX;
+        const dy = ny - closestY;
+        if ((dx * dx + dy * dy) < (radius * radius)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * ============================================================================
+ * تحديث منطق اللعبة (Update Loop)
+ * ============================================================================
+ */
+function update() {
+    if (!gameState.isRunning || gameState.paused) return;
+
+    const p = gameState.player;
+    let moveX = 0;
+    let moveY = 0;
+
+    if (keysPressed.up) moveY -= 1;
+    if (keysPressed.down) moveY += 1;
+    if (keysPressed.left) moveX -= 1;
+    if (keysPressed.right) moveX += 1;
+
+    // توحيد السرعة في الحركة القطرية
+    if (moveX !== 0 || moveY !== 0) {
+        const len = Math.hypot(moveX, moveY);
+        const sprinting = keysPressed.sprint;
+        const speed = GAME_CONFIG.playerSpeed * (sprinting ? GAME_CONFIG.sprintMultiplier : 1);
+        moveX = (moveX / len) * speed;
+        moveY = (moveY / len) * speed;
+
+        // توجيه الكشاف تلقائياً مع حركة الجوال إذا لم يُستخدم الماوس
+        p.angle = Math.atan2(moveY, moveX);
+    }
+
+    // التحقق من التصادم بشكل منفصل على X و Y للانزلاق السلس بمحاذاة الجدران
+    if (!checkWallCollision(p.x + moveX, p.y, GAME_CONFIG.playerRadius)) {
+        p.x += moveX;
+    }
+    if (!checkWallCollision(p.x, p.y + moveY, GAME_CONFIG.playerRadius)) {
+        p.y += moveY;
+    }
+
+    // استهلاك بطارية الكشاف؛ ينطفئ تلقائياً عند نفادها
+    if (p.flashlightOn) {
+        if (gameState.battery <= 0) {
+            p.flashlightOn = false;
+            showMessage("البطارية فارغة! ابحث عن بطارية احتياطية 🔋");
+        } else {
+            gameState.battery = Math.max(0, gameState.battery - GAME_CONFIG.batteryDrain / 60);
+            if (gameState.battery <= 0) {
+                p.flashlightOn = false;
+                showMessage("نفدت بطارية الكشاف! ابحث عن بطارية احتياطية 🔋");
+            }
+        }
+    }
+    updateHUD();
+
+    // التقاط البطاريات الاحتياطية
+    gameState.batteries.forEach(b => {
+        b.pulse += 0.07;
+        if (!b.collected && Math.hypot(p.x - b.x, p.y - b.y) < 28) {
+            b.collected = true;
+            gameState.battery = Math.min(GAME_CONFIG.maxBattery, gameState.battery + 45);
+            gameState.batteriesCollected++;
+            updateHUD();
+            playTone(620, 0.18, 'triangle', 0.1);
+            showMessage("حصلت على بطارية احتياطية! +45%");
+        }
+    });
+
+    // تأثير ارتعاش بسيط في ضوء الكشاف لزيادة التوتر
+    if (Math.random() < 0.04) {
+        gameState.flickerIntensity = 0.65 + Math.random() * 0.35;
+    } else {
+        gameState.flickerIntensity += (1 - gameState.flickerIntensity) * 0.2;
+    }
+
+    // التحقق من التقاط المفاتيح
+    gameState.keys.forEach(key => {
+        key.pulse += 0.06;
+        if (!key.collected) {
+            const dist = Math.hypot(p.x - key.x, p.y - key.y);
+            if (dist < GAME_CONFIG.playerRadius + 16) {
+                key.collected = true;
+                gameState.keysCollected++;
+                updateHUD();
+                playTone(880, 0.25, 'sine', 0.12);
+                if (gameState.keysCollected === 1) spawnMonster();
+
+                if (gameState.keysCollected < GAME_CONFIG.totalKeys) {
+                    showMessage(`وجدت مفتاحاً! (${gameState.keysCollected}/${GAME_CONFIG.totalKeys}) - اسمع صوت خطوات تقترب...`);
+                } else {
+                    gameState.doorUnlocked = true;
+                    showMessage("تم فتح قفل باب الهروب في الزاوية السفلية اليمنى! اهرب الآن!");
+                }
+            }
+        }
+    });
+
+    // التحقق من الوصول لباب الهروب
+    const door = gameState.exitDoor;
+    if (
+        p.x + GAME_CONFIG.playerRadius > door.x - 10 &&
+        p.x - GAME_CONFIG.playerRadius < door.x + door.w &&
+        p.y + GAME_CONFIG.playerRadius > door.y &&
+        p.y - GAME_CONFIG.playerRadius < door.y + door.h
+    ) {
+        if (gameState.doorUnlocked) {
+            triggerWin();
+        } else {
+            showMessage(`الباب مقفل! تحتاج إلى ${GAME_CONFIG.totalKeys - gameState.keysCollected} مفاتيح إضافية.`);
+            p.x -= 6; // دفع بسيط للخلف
+        }
+    }
+
+    // MONSTER_HOOK: تحديث الوحش (ChatGPT / Qwen يقدرون يعدلون على updateMonster)
+    updateMonster();
+}
+
+/**
+ * ============================================================================
+ * الرسم والإضاءة الديناميكية (Render Loop)
+ * ============================================================================
+ */
+/**
+ * ============================================================================
+ * الوحش (MONSTER_HOOK) والأصوات (AUDIO_HOOK)
+ * ============================================================================
+ */
+let audioCtx = null;
+function getAudio() {
+    if (!audioCtx) {
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            audioCtx = null;
+        }
+    }
+    return audioCtx;
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.12) {
+    const ac = getAudio();
+    if (!ac) return;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start();
+    osc.stop(ac.currentTime + duration);
+}
+
+function playNoiseBurst(duration = 0.6, volume = 0.5) {
+    const ac = getAudio();
+    if (!ac) return;
+    const length = Math.floor(ac.sampleRate * duration);
+    const buffer = ac.createBuffer(1, length, ac.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    const src = ac.createBufferSource();
+    const gain = ac.createGain();
+    src.buffer = buffer;
+    gain.gain.setValueAtTime(volume, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+    src.connect(gain);
+    gain.connect(ac.destination);
+    src.start();
+}
+
+// نبضات القلب: تتسارع كلما اقترب الوحش
+function playHeartbeat() {
+    playTone(60, 0.18, 'sine', 0.35);
+    setTimeout(() => playTone(50, 0.14, 'sine', 0.25), 180);
+}
+
+// يظهر الوحش بعد أول مفتاح من الجهة البعيدة
+function spawnMonster() {
+    if (!navBlocked) buildNavGrid();
+    gameState.monster = {
+        x: 1100,
+        y: 480,
+        radius: 16,
+        speed: 1.9,
+        eyePulse: 0,
+        heartbeat: 0,
+        path: [],
+        repath: 0
+    };
+    playTone(110, 1.2, 'sawtooth', 0.08);
+}
+
+/**
+ * تحديث الوحش: يطارد اللاعب مع الاصطدام بالجدران، ويقبض عليه إذا لحقه
+ */
+/**
+ * ============================================================================
+ * البحث عن الطريق للوحش (BFS على شبكة مربعات)
+ * ============================================================================
+ */
+const GRID = { size: 30, cols: 40, rows: 30 };
+let navBlocked = null;
+
+function buildNavGrid() {
+    navBlocked = [];
+    for (let r = 0; r < GRID.rows; r++) {
+        navBlocked[r] = [];
+        for (let c = 0; c < GRID.cols; c++) {
+            const cx = c * GRID.size + GRID.size / 2;
+            const cy = r * GRID.size + GRID.size / 2;
+            navBlocked[r][c] = checkWallCollision(cx, cy, 16);
+        }
+    }
+}
+
+function findPath(sx, sy, tx, ty) {
+    const cols = GRID.cols, rows = GRID.rows, S = GRID.size;
+    const clampC = v => Math.min(cols - 1, Math.max(0, v));
+    const clampR = v => Math.min(rows - 1, Math.max(0, v));
+    const sc = clampC(Math.floor(sx / S)), sr = clampR(Math.floor(sy / S));
+    const tc = clampC(Math.floor(tx / S)), tr = clampR(Math.floor(ty / S));
+    if (sc === tc && sr === tr) return [];
+
+    const startIdx = sr * cols + sc;
+    const goalIdx = tr * cols + tc;
+    const prev = new Int32Array(cols * rows).fill(-1);
+    const queue = [startIdx];
+    prev[startIdx] = startIdx;
+
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let head = 0; head < queue.length; head++) {
+        const cur = queue[head];
+        if (cur === goalIdx) break;
+        const cr = Math.floor(cur / cols);
+        const cc = cur % cols;
+        for (const [dc, dr] of dirs) {
+            const nc = cc + dc;
+            const nr = cr + dr;
+            if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+            const ni = nr * cols + nc;
+            if (prev[ni] !== -1) continue;
+            if (navBlocked[nr][nc] && ni !== goalIdx) continue;
+            prev[ni] = cur;
+            queue.push(ni);
+        }
+    }
+
+    if (prev[goalIdx] === -1) return [];
+
+    const path = [];
+    let node = goalIdx;
+    while (node !== startIdx) {
+        path.push({ x: (node % cols) * S + S / 2, y: Math.floor(node / cols) * S + S / 2 });
+        node = prev[node];
+    }
+    return path.reverse();
+}
+
+// النقطة اللي يمشي لها الوحش الحين: من المسار، أو اللاعب مباشرة إذا ما فيه مسار
+function chaseTarget(m) {
+    const p = gameState.player;
+    if (m.repath <= 0 || !m.path) {
+        m.path = findPath(m.x, m.y, p.x, p.y);
+        m.repath = 30;
+    }
+    m.repath--;
+    while (m.path.length && Math.hypot(m.path[0].x - m.x, m.path[0].y - m.y) < 8) {
+        m.path.shift();
+    }
+    return m.path.length ? m.path[0] : { x: p.x, y: p.y };
+}
+
+// هل الوحش داخل مخروط الكشاف؟
+function isInFlashlight(m) {
+    const p = gameState.player;
+    if (!p.flashlightOn || gameState.battery <= 0) return false;
+    const d = Math.hypot(m.x - p.x, m.y - p.y);
+    if (d > GAME_CONFIG.flashlightRange * gameState.flickerIntensity) return false;
+    const a = Math.atan2(m.y - p.y, m.x - p.x);
+    let diff = a - p.angle;
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    return Math.abs(diff) < GAME_CONFIG.flashlightAngle / 2;
+}
+
+function updateMonster() {
+    const m = gameState.monster;
+    if (!m || !gameState.isRunning) return;
+
+    const p = gameState.player;
+
+    // يصير أسرع بعد المفتاح الثاني
+    m.speed = gameState.keysCollected >= 2 ? 2.6 : 1.9;
+
+    const dx = p.x - m.x;
+    const dy = p.y - m.y;
+    const dist = Math.hypot(dx, dy);
+
+    // يمشي حسب المسار عشان ما يعلق ورا الجدران
+    const wp = chaseTarget(m);
+    const wdx = wp.x - m.x;
+    const wdy = wp.y - m.y;
+    const wdist = Math.hypot(wdx, wdy);
+
+    // الكشاف يبطئه، والركض قريب منه يلفت انتباهه
+    let speed = m.speed * (isInFlashlight(m) ? 0.45 : 1);
+    if (keysPressed.sprint && dist < 300) speed *= 1.15;
+
+    if (wdist > 0.1) {
+        const mx = (wdx / wdist) * speed;
+        const my = (wdy / wdist) * speed;
+        if (!checkWallCollision(m.x + mx, m.y, m.radius)) m.x += mx;
+        if (!checkWallCollision(m.x, m.y + my, m.radius)) m.y += my;
+    }
+
+    // الكشاف يرعش بقوة كلما اقترب الوحش
+    if (dist < 280) {
+        gameState.flickerIntensity = Math.min(gameState.flickerIntensity, 0.45 + Math.random() * 0.4);
+    }
+
+    // نبضات القلب
+    m.heartbeat -= 1;
+    if (dist < 220 && m.heartbeat <= 0) {
+        playHeartbeat();
+        m.heartbeat = Math.max(18, Math.floor(dist / 5));
+    }
+
+    m.eyePulse += 0.1;
+
+    // القبض عليك
+    if (dist < GAME_CONFIG.playerRadius + m.radius - 2) {
+        triggerLose();
+    }
+}
+
+/**
+ * القبض على اللاعب: صدمة ثم شاشة النهاية
+ */
+function triggerLose() {
+    if (!gameState.isRunning) return;
+    gameState.isRunning = false;
+
+    playNoiseBurst(0.7, 0.6);
+    playTone(70, 0.8, 'sawtooth', 0.25);
+
+    const flash = document.getElementById('jumpscare-flash');
+    const wrapper = document.getElementById('game-wrapper');
+    flash.classList.add('on');
+    wrapper.classList.add('shake');
+
+    setTimeout(() => {
+        flash.classList.remove('on');
+        wrapper.classList.remove('shake');
+        showEndModal(
+            "الشيء وصلك...",
+            "#ef4444",
+            "الوحش لحقك في الظلام. جرّب مرة ثانية، واسمع صوت القلب، وانتبه للعيون الحمراء.",
+            "حاول مرة ثانية"
+        );
+    }, 900);
+}
+
+/**
+ * إظهار شاشة النهاية بعنوان ونص وزر مخصص
+ */
+function showEndModal(title, color, text, btnText) {
+    const modal = document.getElementById('modal-screen');
+    const titleEl = document.getElementById('modal-title');
+    titleEl.textContent = title;
+    titleEl.style.color = color;
+    document.getElementById('modal-desc').textContent = text;
+    document.getElementById('start-btn').textContent = btnText;
+    modal.style.display = 'flex';
+}
+
+function render() {
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    // حساب إزاحة الكاميرا لتتبع اللاعب في منتصف الشاشة
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const camX = viewW / 2 - gameState.player.x;
+    const camY = viewH / 2 - gameState.player.y;
+
+    ctx.save();
+    ctx.translate(camX, camY);
+
+    // 1. رسم أرضية المستشفى المهجور (بلاط قديم)
+    ctx.fillStyle = '#12151c';
+    ctx.fillRect(0, 0, GAME_CONFIG.worldWidth, GAME_CONFIG.worldHeight);
+
+    ctx.strokeStyle = '#1a1f29';
+    ctx.lineWidth = 1;
+    const tileSize = 60;
+    for (let x = 0; x <= GAME_CONFIG.worldWidth; x += tileSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, GAME_CONFIG.worldHeight);
+        ctx.stroke();
+    }
+    for (let y = 0; y <= GAME_CONFIG.worldHeight; y += tileSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(GAME_CONFIG.worldWidth, y);
+        ctx.stroke();
+    }
+
+    // 2. رسم باب الهروب
+    const door = gameState.exitDoor;
+    ctx.fillStyle = gameState.doorUnlocked ? '#10b981' : '#7f1d1d';
+    ctx.fillRect(door.x, door.y, door.w, door.h);
+    ctx.strokeStyle = gameState.doorUnlocked ? '#34d399' : '#ef4444';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(door.x, door.y, door.w, door.h);
+
+    // 3. رسم المفاتيح المضيئة
+    gameState.keys.forEach(key => {
+        if (key.collected) return;
+        const glowRadius = 18 + Math.sin(key.pulse) * 5;
+        const grad = ctx.createRadialGradient(key.x, key.y, 2, key.x, key.y, glowRadius);
+        grad.addColorStop(0, 'rgba(251, 191, 36, 0.95)');
+        grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(key.x, key.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // أيقونة المفتاح
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(key.x, key.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // بطاريات احتياطية تلمع في الممرات
+    if (gameState.batteries) gameState.batteries.forEach(b => {
+        if (b.collected) return;
+        const glow = 13 + Math.sin(b.pulse) * 3;
+        ctx.fillStyle = 'rgba(74,222,128,.14)';
+        ctx.beginPath(); ctx.arc(b.x, b.y, glow, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#86efac';
+        ctx.fillRect(b.x - 7, b.y - 10, 14, 20);
+        ctx.fillStyle = '#166534';
+        ctx.fillRect(b.x - 3, b.y - 13, 6, 3);
+    });
+
+    // 4. رسم الجدران والأثاث
+    ctx.fillStyle = '#1e2430';
+    ctx.strokeStyle = '#090b10';
+    ctx.lineWidth = 2;
+    for (const wall of gameState.walls) {
+        ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+        ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+    }
+
+    // 4.5 رسم الوحش (جسم أسود يختفي في الظلام إلا إذا دخل الكشاف)
+    const m = gameState.monster;
+    if (m) {
+        ctx.fillStyle = '#030204';
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 5. رسم اللاعب
+    const p = gameState.player;
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, GAME_CONFIG.playerRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 6. نظام الظلام والكشاف اليدوي (Darkness & Flashlight Mask)
+    // نرسم طبقة ظلام دامس ونقتطع منها مساحة الكشاف
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-500, -500, GAME_CONFIG.worldWidth + 1000, GAME_CONFIG.worldHeight + 1000);
+
+    // ثقب الرؤية الخفيفة حول اللاعب
+    ctx.moveTo(p.x + GAME_CONFIG.ambientVisionRadius, p.y);
+    ctx.arc(p.x, p.y, GAME_CONFIG.ambientVisionRadius, 0, Math.PI * 2, true);
+
+    // ثقب مخروط الكشاف اليدوي إذا كان يعمل
+    if (p.flashlightOn) {
+        const range = GAME_CONFIG.flashlightRange * gameState.flickerIntensity;
+        ctx.moveTo(p.x, p.y);
+        ctx.arc(
+            p.x,
+            p.y,
+            range,
+            p.angle + GAME_CONFIG.flashlightAngle / 2,
+            p.angle - GAME_CONFIG.flashlightAngle / 2,
+            true
+        );
+        ctx.closePath();
+    }
+
+    ctx.fillStyle = 'rgba(2, 3, 5, 0.96)';
+    ctx.fill('evenodd');
+
+    // تدرج ضوئي ناعم لمخروط الكشاف
+    if (p.flashlightOn) {
+        const range = GAME_CONFIG.flashlightRange * gameState.flickerIntensity;
+        const lightGrad = ctx.createRadialGradient(p.x, p.y, 10, p.x, p.y, range);
+        lightGrad.addColorStop(0, 'rgba(255, 250, 220, 0.18)');
+        lightGrad.addColorStop(0.7, 'rgba(255, 250, 220, 0.05)');
+        lightGrad.addColorStop(1, 'rgba(2, 3, 5, 0.96)');
+
+        ctx.fillStyle = lightGrad;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.arc(
+            p.x,
+            p.y,
+            range,
+            p.angle - GAME_CONFIG.flashlightAngle / 2,
+            p.angle + GAME_CONFIG.flashlightAngle / 2
+        );
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.restore();
+
+    // عيون الوحش تلمع بخفوت من بعيد حتى داخل الظلام
+    if (m) {
+        const d = Math.hypot(p.x - m.x, p.y - m.y);
+        if (d < 380) {
+            const pulse = 0.6 + Math.sin(m.eyePulse) * 0.4;
+            const alpha = Math.max(0, Math.min(0.9, (380 - d) / 220)) * pulse;
+            ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(m.x - 5, m.y - 3, 2.5, 0, Math.PI * 2);
+            ctx.arc(m.x + 5, m.y - 3, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    ctx.restore();
+}
+
+/**
+ * حلقة اللعبة الرئيسية
+ */
+function gameLoop() {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+/**
+ * نهاية المرحلة (الفوز)
+ */
+function triggerWin() {
+    gameState.isRunning = false;
+    const modal = document.getElementById('modal-screen');
+    document.getElementById('modal-title').textContent = "نجوت من الغرفة 404!";
+    document.getElementById('modal-title').style.color = "#10b981";
+    document.getElementById('modal-desc').innerHTML = 
+        "تمكنت من فتح الباب والهروب... لكن هذا مجرد الطابق الأول.<br><br><strong>جاهز للطابق الثاني!</strong>";
+    document.getElementById('start-btn').textContent = "العب مرة أخرى";
+    modal.style.display = 'flex';
+}
+
+// زر بدء اللعبة
+document.getElementById('start-btn').addEventListener('click', () => {
+    document.getElementById('modal-screen').style.display = 'none';
+    const ac = getAudio();
+    if (ac && ac.state === 'suspended') ac.resume();
+    initGame();
+    gameState.isRunning = true;
+});
+
+// قائمة الألعاب الثانية
+document.getElementById('games-btn').addEventListener('click', () => {
+    document.getElementById('games-screen').style.display = 'flex';
+});
+document.getElementById('games-back-btn').addEventListener('click', () => {
+    document.getElementById('games-screen').style.display = 'none';
+});
+document.querySelectorAll('.game-card.playable').forEach(card => {
+    card.addEventListener('click', () => {
+        document.getElementById('games-screen').style.display = 'none';
+    });
+});
+
+// تشغيل حلقة الرسم عند تحميل الصفحة
+window.onload = () => {
+    initGame();
+    gameLoop();
+};
+</script>
+</body>
+</html>
